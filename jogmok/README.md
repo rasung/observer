@@ -1,6 +1,6 @@
 # jongmok
 
-env = windows8, python35, utf-8
+env = python35, utf-8
 
 naver finance -> domestic -> upjong -> jongmok
 
