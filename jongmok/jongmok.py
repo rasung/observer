@@ -33,9 +33,9 @@ class Finance:
 		f.write(jongmok + "\n")
 		f.close()
 		
-	def save_count(self, filename, count):
+	def save_count(self, filename):
 		f = open(filename, "a")
-		f.write(str(count) + " counted")
+		f.write(str(self.count) + " counted")
 		f.close()
 	
 	def check_minus(self, data):
@@ -118,7 +118,7 @@ for i in range(0, len(upjong_list)):
 			
 		finance.add_jongmok_count()
 		
-finance.save_count()	
+finance.save_count(save_filename)	
 
 
 
