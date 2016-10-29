@@ -5,129 +5,129 @@ import time
 import datetime
 
 
-####################################              class and function           #####################################
+# 1. parse upjong list
+# 2. parse jongmok list
+# 3. parse jongmok data
+# 3. verify jongmok data
 
 
-class Finance:
-	jongmok_count = 0
-	
-	def find_upjonglist(self):
-		time.sleep(0.3)
-		upjong_listhtml = urlopen("http://finance.naver.com/sise/sise_group.nhn?type=upjong").read()
-		upjong_list = BeautifulSoup(upjong_listhtml, "html.parser").find_all(style="padding-left:10px;")
-		return upjong_list
-	
-	def find_jongmoklist(self, upjong_url):
-		time.sleep(0.3)
-		jongmok_listhtml = urlopen("http://finance.naver.com" + upjong_url).read()
-		jongmok_list = BeautifulSoup(jongmok_listhtml, "html.parser").find_all("table")[3].find_all("tr")
-		return jongmok_list
-		
-	def save_upjongName(self, filename, upjong_name):
-		f = open(filename, "a")
-		f.write("-----" + upjong_name + "-----\n")
-		f.close()
-	
-	def save_jongmokName(self, filename, jongmok):
-		f = open(filename, "a")
-		f.write(jongmok + "\n")
-		f.close()
-		
-	def save_count(self, filename):
-		f = open(filename, "a")
-		f.write(str(self.count) + " counted")
-		f.close()
-	
-	def check_minus(self, data):
-		if data.em is None:
-			temp = re.sub("[\s,]", "", data.contents[0]).replace(u"\xa0", u"")
+class Parser:
+    def __init__(self):
+        path = r"C:\Users\rlxotjr\Desktop"
+        year = str(datetime.date.today().year)
+        month = str(datetime.date.today().month)
+        day = str(datetime.date.today().day)
+        file = path + "\jongmoks_" + year + "_" + month  + "_" + day + ".txt"
+        self.f = open(file, "a")
+        self.count = 0
 
-			if temp == "-" or temp == "":
-				return None
-			else:
-				return int(temp)
-		else:
-			return int(re.sub("[\s,]", "", data.em.contents[0]))
-			
-	def add_jongmok_count(self):
-		self.jongmok_count += 1
+    def __del__(self):
+        self.f.write(str(self.count) + " counted")
+        self.f.close()
 
+    # 1. parse upjong list
+    def __parseUpjongList__(self, url):
+        html = urlopen(url).read()
+        data = BeautifulSoup(html, "html.parser").find_all(style="padding-left:10px;")
+        
+        # "기타" upjong is useless.
+        data = list(filter(lambda x : x.a.contents[0] != "기타", data))
 
-	
-#########################################           end class and functions           ##########################################
-	
-today = datetime.date.today()
-save_path = r"C:\Users\rlxotjr\Desktop\jongmoks_"
-save_filename = save_path + str(today.year) + "_" + str(today.month)  + "_" + str(today.day) + ".txt"
+        # save [upjongName, upjongURL] list
+        upjongList = list(map(lambda x : [x.a.contents[0], "http://finance.naver.com" + x.a.get("href")], data))
+        
+        return upjongList
 
-finance = Finance()
-upjong_list = finance.find_upjonglist()
+    # 2. parse jongmok list
+    def __parseJongmokList__(self, upjongList):
+        data = []
+        for i in range(len(upjongList)):
+            # save upjongName
+            data.append([i, upjongList[i][0]])
 
-for i in range(0, len(upjong_list)):
-	# "기타" jongmoklist is useless. "기타" Jongmok skip.
-	if upjong_list[i].a.contents[0] == "기타":
-		continue
-			
-	finance.save_upjongName(save_filename, upjong_list[i].a.contents[0])
-	jongmok_list = finance.find_jongmoklist(upjong_list[i].a.get("href"))
+            # time delay is to prevent server's connection close. Because of so fast connections
+            time.sleep(0.2)
 
-	for j in range(0, len(jongmok_list)-4):
+            jongmokListHtml = urlopen(upjongList[i][1]).read()
+            jongmokList = BeautifulSoup(jongmokListHtml, "html.parser").find_all("table")[3].find_all("tr")
+            # Todo 2 -> 1 , 3
+            jongmokList = jongmokList[2:len(jongmokList)-2]
+            data += list(map(lambda x : "http://finance.naver.com" + x.a.get("href"), jongmokList))
 
-		try:
-			# time delay is to prevent server's connection close. Because of so fast connections
-			time.sleep(0.3)
-			jongmok_page = urlopen("http://finance.naver.com" + jongmok_list[2+j].a.get("href")).read()
-			jongmok_data = BeautifulSoup(jongmok_page, "html.parser").find("div", class_="section cop_analysis").tbody.find_all("td")
-			
-			if len(jongmok_data) == 1:
-				continue
-				
-			data1 = finance.check_minus(jongmok_data[0])
-			if data1 == None: 
-				continue
-			data2 = finance.check_minus(jongmok_data[1])
-			if data2 == None: 
-				continue
-			data3 = finance.check_minus(jongmok_data[2])
-			if data3 == None: 
-				continue
-			data4 = finance.check_minus(jongmok_data[10])
-			if data4 == None: 
-				continue
-			data5 = finance.check_minus(jongmok_data[11])
-			if data5 == None: 
-				continue
-			data6 = finance.check_minus(jongmok_data[12])
-			if data6 == None: 
-				continue
-			data7 = finance.check_minus(jongmok_data[20])
-			if data7 == None: 
-				continue
-			data8 = finance.check_minus(jongmok_data[21])
-			if data8 == None: 
-				continue
-			data9 = finance.check_minus(jongmok_data[22])
-			if data9 == None: 
-				continue
-			
-			if data1 < data2 and data2 < data3 and data4 < data5 and data5 < data6 and data7 < data8 and data8 < data9:
-				finance.save_jongmokName(save_filename, BeautifulSoup(jongmok_page, "html.parser").find("h2").a.contents[0])
-				
-		except:
-			print(BeautifulSoup(jongmok_page, "html.parser").find("h2").a.contents[0] + "error!!!!!!!!")
-			
-		finance.add_jongmok_count()
-		
-finance.save_count(save_filename)	
+            print("__parseJongmokList__" + str(i) + "/" + str(len(upjongList)))
+
+        return data
+
+    # 3. parse jongmok data
+    def __parseJongmokData__(self, jongmokList):
+        for i in range(len(jongmokList)):
+            self.count += 1
+
+            # write upjongName
+            if len(jongmokList[i]) is 2:
+                self.f.write("-----" + jongmokList[i][1] + "-----\n")
+                continue
+
+            # time delay is to prevent server's connection close. Because of so fast connections
+            #time.sleep(0.2)
+            
+            jongmokHtml = urlopen(jongmokList[i]).read()
+            jongmokData = BeautifulSoup(jongmokHtml, "html.parser").find("div", class_="section cop_analysis").tbody.find_all("td")
+            jongmokName = BeautifulSoup(jongmokHtml, "html.parser").find("h2").a.contents[0]
+
+            try:
+                # 3. verify jongmok data
+                if self.__isVerified__(jongmokData) is True:
+                    self.f.write(jongmokName + "\n")
+            except:
+                print(jongmokName + "error!!!!!!!!")
+            
+            print("__parseJongmokData__" + str(i) + "/" + str(len(jongmokList)))
 
 
+    def __isVerified__(self, jongmokData):
+        data = []
 
-	
+        # skip null data.
+        if len(jongmokData) == 1:
+            return False
 
-	
-	
-	
-	
-	
-	
-	
+        # In this parser, we needs only [0,1,2,10,11,12,20,21,22] data.
+        # Detail is in readme.
+        for i in [0,1,2,10,11,12,20,21,22]:
+            temp = self.__stringToint__(jongmokData[i])
+            if temp is None:
+                return False
+            else:
+                data.append(temp)
+
+        # verify condition setting.
+        # Detail is in readme.
+        for j in [0,1,3,4,6,7]:
+            if data[j] > data[j+1]:
+                return False
+
+        return True
+
+    # Plus and minus string value change to int 
+    def __stringToint__(self, data):
+        if data.em is None:
+            temp = re.sub("[\s,]", "", data.contents[0]).replace(u"\xa0", u"")
+            if temp == "-" or temp == "":
+                return None
+            else:
+                return int(temp)
+        else:
+            return int(re.sub("[\s,]", "", data.em.contents[0]))
+
+    def parse(self):
+        upjongList = self.__parseUpjongList__("http://finance.naver.com/sise/sise_group.nhn?type=upjong")
+        jongmokList = self.__parseJongmokList__(upjongList)
+        self.__parseJongmokData__(jongmokList)
+
+
+
+
+parser = Parser()
+parser.parse()
+
