@@ -18,7 +18,7 @@ class Parser:
         month = str(datetime.date.today().month)
         day = str(datetime.date.today().day)
         file = path + "\jongmoks_" + year + "_" + month  + "_" + day + ".txt"
-        self.f = open(file, "a")
+        self.f = open(file, "a", encoding='utf8')
         self.count = 0
 
     def __del__(self):
@@ -73,7 +73,7 @@ class Parser:
             
             jongmokHtml = urlopen(jongmokList[i]).read()
             jongmokData = BeautifulSoup(jongmokHtml, "html.parser").find("div", class_="section cop_analysis").tbody.find_all("td")
-            jongmokName = BeautifulSoup(jongmokHtml, "html.parser").find("h2").a.contents[0]
+            jongmokName = BeautifulSoup(jongmokHtml, "html.parser").find("div", class_="wrap_company").h2.a.contents[0]
 
             try:
                 # 3. verify jongmok data
