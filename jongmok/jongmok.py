@@ -3,7 +3,7 @@ from urllib.request import urlopen
 import re
 import time
 import datetime
-
+import os
 
 # 1. parse upjong list
 # 2. parse jongmok list
@@ -13,7 +13,7 @@ import datetime
 
 class Parser:
     def __init__(self):
-        path = r"C:\Users\rlxotjr\Desktop"
+        path = os.path.dirname(os.path.realpath(__file__))
         year = str(datetime.date.today().year)
         month = str(datetime.date.today().month)
         day = str(datetime.date.today().day)
