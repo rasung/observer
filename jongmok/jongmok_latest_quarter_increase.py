@@ -70,7 +70,6 @@ class Parser:
 
             # write upjongName
             if len(jongmokList[i]) is 2:
-                #print(jongmokList[i][1].encode('euc-kr', 'ignore').decode('utf-8', 'ignore'))
                 self.f.write("-----" + jongmokList[i][1] + "-----\n")
                 continue
 
@@ -80,9 +79,6 @@ class Parser:
             jongmokHtml = get(jongmokList[i])
             jongmokData = BeautifulSoup(jongmokHtml.content.decode('euc-kr','replace')).find("div", class_="section cop_analysis").tbody.find_all("td")
             jongmokName = BeautifulSoup(jongmokHtml.content.decode('euc-kr','replace')).find("div", class_="wrap_company").h2.a.contents[0]
-            print(jongmokName)
-            print(jongmokName.encode('utf-8'))
-
 
             try:
                 # 3. verify jongmok data
