@@ -1,9 +1,14 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 from bs4 import BeautifulSoup
-from urllib.request import urlopen
+from requests import get
 import re
 import time
 import datetime
 import os
+
+
 
 # 1. parse upjong list
 # 2. parse jongmok list
@@ -18,7 +23,7 @@ class Parser:
         month = str(datetime.date.today().month)
         day = str(datetime.date.today().day)
         file = path + "\jongmoks_" + year + "_" + month  + "_" + day + ".txt"
-        self.f = open(file, "a", encoding='utf8')
+        self.f = open(file, 'w', -1, "utf-8")
         self.count = 0
 
     def __del__(self):
@@ -27,8 +32,8 @@ class Parser:
 
     # 1. parse upjong list
     def __parseUpjongList__(self, url):
-        html = urlopen(url).read()
-        data = BeautifulSoup(html, "html.parser").find_all(style="padding-left:10px;")
+        html = get(url)
+        data = BeautifulSoup(html.content.decode('euc-kr','replace')).find_all(style="padding-left:10px;")
         
         # "기타" upjong is useless.
         data = list(filter(lambda x : x.a.contents[0] != "기타", data))
@@ -48,13 +53,13 @@ class Parser:
             # time delay is to prevent server's connection close. Because of so fast connections
             time.sleep(0.2)
 
-            jongmokListHtml = urlopen(upjongList[i][1]).read()
-            jongmokList = BeautifulSoup(jongmokListHtml, "html.parser").find_all("table")[3].find_all("tr")
+            jongmokListHtml = get(upjongList[i][1])
+            jongmokList = BeautifulSoup(jongmokListHtml.content.decode('euc-kr','replace')).find_all("table")[3].find_all("tr")
             # Todo 2 -> 1 , 3
             jongmokList = jongmokList[2:len(jongmokList)-2]
             data += list(map(lambda x : "http://finance.naver.com" + x.a.get("href"), jongmokList))
 
-            print("__parseJongmokList__" + str(i) + "/" + str(len(upjongList)))
+            print("__parseJongmokList__" + str(i+1) + "/" + str(len(upjongList)))
 
         return data
 
@@ -65,15 +70,19 @@ class Parser:
 
             # write upjongName
             if len(jongmokList[i]) is 2:
+                #print(jongmokList[i][1].encode('euc-kr', 'ignore').decode('utf-8', 'ignore'))
                 self.f.write("-----" + jongmokList[i][1] + "-----\n")
                 continue
 
             # time delay is to prevent server's connection close. Because of so fast connections
             #time.sleep(0.2)
             
-            jongmokHtml = urlopen(jongmokList[i]).read()
-            jongmokData = BeautifulSoup(jongmokHtml, "html.parser").find("div", class_="section cop_analysis").tbody.find_all("td")
-            jongmokName = BeautifulSoup(jongmokHtml, "html.parser").find("div", class_="wrap_company").h2.a.contents[0]
+            jongmokHtml = get(jongmokList[i])
+            jongmokData = BeautifulSoup(jongmokHtml.content.decode('euc-kr','replace')).find("div", class_="section cop_analysis").tbody.find_all("td")
+            jongmokName = BeautifulSoup(jongmokHtml.content.decode('euc-kr','replace')).find("div", class_="wrap_company").h2.a.contents[0]
+            print(jongmokName)
+            print(jongmokName.encode('utf-8'))
+
 
             try:
                 # 3. verify jongmok data
