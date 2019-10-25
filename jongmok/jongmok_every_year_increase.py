@@ -8,12 +8,9 @@ import time
 import datetime
 import os
 
+ROE = 58
+PER = 108
 
-
-# 1. parse upjong list
-# 2. parse jongmok list
-# 3. parse jongmok data
-# 3. verify jongmok data
 
 
 class Parser:
@@ -95,27 +92,30 @@ class Parser:
 
 
     def __isVerified__(self, jongmokData):
-        data = []
 
-        # skip null data.
         if len(jongmokData) == 1:
             return False
 
-        # In this parser, we needs only [0,1,2,10,11,12,20,21,22] data.
-        # Detail is in readme.
-        for i in [0,1,2,10,11,12,20,21,22]:
-            temp = self.__stringToint__(jongmokData[i])
-            if temp is None:
-                return False
-            else:
-                data.append(temp)
+        roe = self.__stringToint__(jongmokData[ROE])
+        roe_pred = self.__stringToint__(jongmokData[ROE+1])
+        per = self.__stringToint__(jongmokData[PER])
+        per_pred = self.__stringToint__(jongmokData[PER+1])
 
-        # verify condition setting.
-        # Detail is in readme.
-        for j in [0,1,3,4,6,7]:
-            if data[j] > data[j+1]:
-                return False
+        if roe is None and per is None:
+            return False
 
+        if roe < 0 :
+            return False
+
+        if roe_pred is not None:
+            roe = (roe_pred + roe) / 2
+
+        if per_pred is not None:
+            per = (per_pred + per) / 2
+
+        print(int(roe))
+        print(int(per))  
+   
         return True
 
     # Plus and minus string value change to int 
