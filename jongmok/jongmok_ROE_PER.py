@@ -1,6 +1,14 @@
 #-*- coding:utf-8 -*-
 import pandas as pd
 from copy import deepcopy
+from numpy import math
+import openpyxl
+import datetime
+
+
+
+# 최근 분기 실적.4 data is our needed data. Data of the most recent date
+RECENT_QUATER_DATA = u'최근 분기 실적.4'
 
 # html에 있는 정보를 읽어온다.
 # header = 0 으로 맨 윗줄의 데이터를 헤더로 사용하고 얻은 자료를 리스트 형태로 이용하기 위해 뒤에 [0] 을 붙여준다.
@@ -27,24 +35,60 @@ code_df = code_df.rename(columns={u'회사명': 'name', u'종목코드': 'code'}
 
 data_list = []
 # 크롤링
-#for i in range(0, 20):
-for i in range(20, len(code_df)):
+#for i in range(0, 10):
+for i in range(0, len(code_df)):
     name = code_df['name'].get(i)
     code = code_df['code'].get(i)
+    #print(name)
     url = 'https://finance.naver.com/item/main.nhn?code={code}'.format(code = code)
+    html_data = pd.read_html(url, header = 0, encoding='euc-kr')
+    if html_data is None:
+        print(name, ' pd.read_html() is None')
+        continue
+
     # [3] index is company's financial data.
-    df = pd.read_html(url, header = 0, encoding='euc-kr')[3] 
-    print(df)   
+    df = html_data[3]
+    if df is None:
+        print(name, ' html_data[] is None')
+        continue
+    if df.get(RECENT_QUATER_DATA) is None:
+        print(name, ' 최근 분기 실적 is None')
+        continue
+
     # ROE is 7th index and PER is 12th index.
-    # 최근 분기 실적.4 data is our needed data. Data of the most recent date
-    if df.get(u'최근 분기 실적.4').get(7) is None:
+    if df.get(RECENT_QUATER_DATA).get(7) is None:
+        print(name, ' ROE is None')
+        continue 
+    #else:
+    #    print(df.get(RECENT_QUATER_DATA).get(7))
+    if df.get(RECENT_QUATER_DATA).get(12) is None:
+        print(name, ' PER is None')
+        continue      
+    #else:
+    #    print(df.get(RECENT_QUATER_DATA).get(12))
+    if math.isnan(float(df.get(RECENT_QUATER_DATA).get(7))):
+        print(name, ' ROE is nan')
         continue
-    if df.get(u'최근 분기 실적.4').get(12) is None:
+    #else:
+    #    print(df.get(RECENT_QUATER_DATA).get(7))
+    if math.isnan(float(df.get(RECENT_QUATER_DATA).get(12))):
+        print(name, ' PER is nan')
         continue
-    ROE = float(df.get(u'최근 분기 실적.4').get(7))
-    PER = float(df.get(u'최근 분기 실적.4').get(12))
+    #else:
+    #   print(df.get(RECENT_QUATER_DATA).get(7))
+
+    ROE = float(df.get(RECENT_QUATER_DATA).get(7))
+    PER = float(df.get(RECENT_QUATER_DATA).get(12))
+
+    if ROE < 5:
+        print(name, ' PER value is out of range')
+        continue
+    if PER < 0 or PER > 50:
+        print(name, ' PER value is out of range')
+        continue
+
     data_list.append([ 
-        i, 
+        str(i)+'/'+str(len(code_df)-1), 
         name, 
         code, 
         ROE, 
@@ -53,7 +97,7 @@ for i in range(20, len(code_df)):
         0, # PER rank
         0  # Total score
     ])
-    print(data_list[i])
+    print(data_list[-1])
     #print(df)
 
 # sort by ROE
@@ -76,4 +120,34 @@ for i in range(0, len(data_list)):
 
 # sort by Total score
 data_list = sorted(data_list, key = lambda x: float(x[7]), reverse = False)
+print(data_list)
+
+# change data type for pandas DataFrame
+date_for_dataframe = {
+    'name' : [],
+    'code' : [],
+    'ROE' : [],
+    'PER' : [],
+    'ROE rank' : [],
+    'PER rank' : [],
+    'Total score' : []  
+}
+
+i=0
+for key in date_for_dataframe:
+    i+=1
+    if i >= len(data_list[0]):
+        print('i value is out of range')
+    for j in range(0, len(data_list)):
+        date_for_dataframe[key].append(data_list[j][i])
+
+result = pd.DataFrame(date_for_dataframe)
+print(result)
+
+result.to_excel('REO_PER_rank_' + str(datetime.date.today()) + '.xlsx', sheet_name='REO_PER_rank')
+
+
+
+
+
 
