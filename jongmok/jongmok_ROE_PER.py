@@ -4,11 +4,19 @@ from copy import deepcopy
 from numpy import math
 import openpyxl
 import datetime
+import pymongo
+import json
+
+# mongodb setting
+myclient = pymongo.MongoClient("mongodb://localhost:27017/")
+mydb = myclient["mydb"]
+mycol = mydb["mycollection"]
+
 
 filename = 'ROE_PER_rank_' + str(datetime.date.today()) + '.xlsx'
 
 # 최근 분기 실적.4 data is our needed data. Data of the most recent date
-RECENT_QUATER_DATA = u'최근 분기 실적.4'
+RECENT_QUATER_DATA = u'최근 분기 실적4'
 
 # html에 있는 정보를 읽어온다.
 # header = 0 으로 맨 윗줄의 데이터를 헤더로 사용하고 얻은 자료를 리스트 형태로 이용하기 위해 뒤에 [0] 을 붙여준다.
@@ -31,119 +39,137 @@ print(code_df)
 # 한글로된 컬럼명을 영어로 바꿔준다.
 code_df = code_df.rename(columns={u'회사명': 'name', u'종목코드': 'code'})
 
-data_list = []
-finance_data_list = []
-with pd.ExcelWriter(filename) as writer:
-    # 크롤링
-    #for i in range(0, 30):
-    for i in range(0, len(code_df)):
-        name = code_df['name'].get(i)
-        code = code_df['code'].get(i)
-        #print(name)
-        url = 'https://finance.naver.com/item/main.nhn?code={code}'.format(code = code)
-        html_data = pd.read_html(url, header = 0, encoding='euc-kr')
-        if html_data is None:
-            #print(name, ' pd.read_html() is None')
-            continue
+ROE_PER_rank = []
+# 크롤링
+#for i in range(0, 30):
+for i in range(0, len(code_df)):
+    code = code_df['code'].get(i)
+    name = code_df['name'].get(i)
+    # remove columns dot
+    name = name.replace('.', '')
 
-        # [3] index is company's financial data.
-        df = html_data[3]
-        if df is None:
-            #print(name, ' html_data[] is None')
-            continue
-        if df.get(RECENT_QUATER_DATA) is None:
-            #print(name, ' 최근 분기 실적 is None')
-            continue
+    #print(name)
+    url = 'https://finance.naver.com/item/main.nhn?code={code}'.format(code = code)
+    html_data = pd.read_html(url, header = 0, encoding='euc-kr')
+    if html_data is None:
+        #print(name, ' pd.read_html() is None')
+        continue
 
-        # ROE is 7th index and PER is 12th index.
-        if df.get(RECENT_QUATER_DATA).get(7) is None:
-            #print(name, ' ROE is None')
-            continue 
-        #else:
-        #    print(df.get(RECENT_QUATER_DATA).get(7))
-        if df.get(RECENT_QUATER_DATA).get(12) is None:
-            #print(name, ' PER is None')
-            continue      
-        #else:
-        #    print(df.get(RECENT_QUATER_DATA).get(12))
-        if math.isnan(float(df.get(RECENT_QUATER_DATA).get(7))):
-            #print(name, ' ROE is nan')
-            continue
-        #else:
-        #    print(df.get(RECENT_QUATER_DATA).get(7))
-        if math.isnan(float(df.get(RECENT_QUATER_DATA).get(12))):
-            #print(name, ' PER is nan')
-            continue
-        #else:
-        #   print(df.get(RECENT_QUATER_DATA).get(7))
+    # [3] index is company's financial data.
+    df = html_data[3]
 
-        ROE = float(df.get(RECENT_QUATER_DATA).get(7))
-        PER = float(df.get(RECENT_QUATER_DATA).get(12))
+    # remove columns dot
+    temp = []
+    for j in range(0,len(df.columns)):
+        temp.append(df.columns[j].replace('.', ''))
+    df.columns = temp
 
-        if ROE > 10 and PER > 0:
-            print(name, ' ROE > 10 and PER > 0')
-        else:
-            continue
+    if df is None:
+        #print(name, ' html_data[] is None')
+        continue
+    if df.get(RECENT_QUATER_DATA) is None:
+        #print(name, ' 최근 분기 실적 is None')
+        continue
 
-        data_list.append([ 
-            str(i)+'/'+str(len(code_df)-1), 
-            name, 
-            code, 
-            ROE, 
-            PER,
-            0, # ROE rank
-            0, # PER rank
-            0  # Total score
-        ])
-        print(data_list[-1])
-        #print(df)
-        pd.DataFrame(df).to_excel(writer, sheet_name=name)
+    # ROE is 7th index and PER is 12th index.
+    if df.get(RECENT_QUATER_DATA).get(7) is None:
+        #print(name, ' ROE is None')
+        continue 
+    #else:
+    #    print(df.get(RECENT_QUATER_DATA).get(7))
+    if df.get(RECENT_QUATER_DATA).get(12) is None:
+        #print(name, ' PER is None')
+        continue      
+    #else:
+    #    print(df.get(RECENT_QUATER_DATA).get(12))
+    if math.isnan(float(df.get(RECENT_QUATER_DATA).get(7))):
+        #print(name, ' ROE is nan')
+        continue
+    #else:
+    #    print(df.get(RECENT_QUATER_DATA).get(7))
+    if math.isnan(float(df.get(RECENT_QUATER_DATA).get(12))):
+        #print(name, ' PER is nan')
+        continue
+    #else:
+    #   print(df.get(RECENT_QUATER_DATA).get(7))
 
-    # sort by ROE
-    data_list = sorted(data_list, key = lambda x: float(x[3]), reverse = True)
+    ROE = float(df.get(RECENT_QUATER_DATA).get(7))
+    PER = float(df.get(RECENT_QUATER_DATA).get(12))
 
-    # set ROE rank
-    for i in range(0, len(data_list)):
-        data_list[i][5] = i 
+    if ROE > 10 and PER > 0:
+        print(name, ' ROE > 10 and PER > 0')
+    else:
+        continue
 
-    # sort by PER
-    data_list = sorted(data_list, key = lambda x: float(x[4]), reverse = False)
+    ROE_PER_rank.append([ 
+        name, 
+        code, 
+        ROE, 
+        PER,
+        0, # ROE rank
+        0, # PER rank
+        0  # Total score
+    ])
+    print(str(i)+'/'+str(len(code_df)-1), ROE_PER_rank[-1])
+    df_dicted = df.to_dict('records')
+    #print(df_dicted)
+    x = mycol.insert_one({
+        'type' : 'jongmok',
+        'name' : name,
+        'code' : code,
+        'data' : df_dicted
+        })
+    print(name, x.inserted_id)
 
-    # set PER rank
-    for i in range(0, len(data_list)):
-        data_list[i][6] = i 
 
-    # sum rank of ROE and PER
-    for i in range(0, len(data_list)):
-        data_list[i][7] = data_list[i][5] + data_list[i][6]
+# sort by ROE
+ROE_PER_rank = sorted(ROE_PER_rank, key = lambda x: float(x[2]), reverse = True)
 
-    # sort by Total score
-    data_list = sorted(data_list, key = lambda x: float(x[7]), reverse = False)
-    print(data_list)
+# set ROE rank
+for i in range(0, len(ROE_PER_rank)):
+    ROE_PER_rank[i][4] = i 
 
-    # change data type for pandas DataFrame
-    date_for_dataframe = {
-        'name' : [],
-        'code' : [],
-        'ROE' : [],
-        'PER' : [],
-        'ROE rank' : [],
-        'PER rank' : [],
-        'Total score' : []  
-    }
+# sort by PER
+ROE_PER_rank = sorted(ROE_PER_rank, key = lambda x: float(x[3]), reverse = False)
 
-    i=0
-    for key in date_for_dataframe:
-        i+=1
-        if i >= len(data_list[0]):
-            print('i value is out of range')
-        for j in range(0, len(data_list)):
-            date_for_dataframe[key].append(data_list[j][i])
+# set PER rank
+for i in range(0, len(ROE_PER_rank)):
+    ROE_PER_rank[i][5] = i 
 
-    result = pd.DataFrame(date_for_dataframe)
-    print(result)
+# sum rank of ROE and PER
+for i in range(0, len(ROE_PER_rank)):
+    ROE_PER_rank[i][6] = ROE_PER_rank[i][4] + ROE_PER_rank[i][5]
 
-    result.to_excel(writer, sheet_name='ROE_PER_rank')
+# sort by Total score
+ROE_PER_rank = sorted(ROE_PER_rank, key = lambda x: float(x[6]), reverse = False)
+print(ROE_PER_rank)
+
+# change data format for pandas DataFrame
+ROE_PER_rank_for_dataframe = {
+    'name' : [],
+    'code' : [],
+    'ROE' : [],
+    'PER' : [],
+    'ROE rank' : [],
+    'PER rank' : [],
+    'Total score' : []  
+}
+
+i=0
+for key in ROE_PER_rank_for_dataframe:
+    for j in range(0, len(ROE_PER_rank)):
+        ROE_PER_rank_for_dataframe[key].append(ROE_PER_rank[j][i])
+    i+=1
+
+
+result = pd.DataFrame(ROE_PER_rank_for_dataframe)
+result_dicted = result.to_dict('records')
+x = mycol.insert_one({
+    'type' : 'rank',
+    'data' : result_dicted,
+    })
+print('Finished! result index :', x.inserted_id)
+
 
 
 
