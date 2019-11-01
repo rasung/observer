@@ -12,12 +12,18 @@ mycol = mydb["mycollection"]
 @app.route('/')
 def hello():
 
-	res = {}
-	mydoc = mycol.find({'type' : 'rank'})
+	# rank data table html
+#	mydoc = mycol.find({'type' : 'rank'})
+#	for x in mydoc:
+#  		res = pd.DataFrame(x['data'])
+#  		print(res.to_html())
+
+	# jongmok data table html
+	mydoc = mycol.find({'type' : 'jongmok', 'code' : '206560'})
 	for x in mydoc:
   		res = pd.DataFrame(x['data'])
   		print(res.to_html())
-
+	
 
 	return render_template("home.html", message="Hello Flask!");
 
